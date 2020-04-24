@@ -22,7 +22,8 @@ let stopTouchesPublisher = PassthroughSubject<Void,Never>()
 
 let fontSize:CGFloat = 48
 let keysize:CGFloat = 64
-let fireRate = 0.1
+var fireRate = 0.2
+var firstKey = true
 
 
 enum Moves {
@@ -31,12 +32,12 @@ enum Moves {
 }
 
 struct Fonts {
-    static func futuraCondensedMedium(size:CGFloat) -> Font{
-        return Font.custom("Futura-CondensedMedium",size: size)
-    }
+  static func futuraCondensedMedium(size:CGFloat) -> Font{
+    return Font.custom("Futura-CondensedMedium",size: size)
+  }
 }
 
-let letters = "abcdefghijklmnopqrstuvwxyz"
+let letters = "abcdefghijklm<nopqrstuvwxyz "
 
 struct ContentView: View {
   
@@ -51,10 +52,34 @@ struct ContentView: View {
   let timer = Timer.publish(every: fireRate, on: .main, in: .common).autoconnect()
   
   var body: some View {
+    
     return VStack {
       
-      Text("Hello World " + String(boxIndex))
-        .onReceive(startTouchesPublisher) { ( direct ) in
+    
+        
+ 
+       Rectangle()
+          .fill(Color.gray)
+          .frame(width: 256, height: 16, alignment: .center)
+          .onTapGesture {
+            stopTouchesPublisher.send()
+        }
+        .gesture(DragGesture(minimumDistance: 0)
+        .updating($isTapped) { (value, isTapped, _) in
+          isTapped = true
+          if value.translation.width > 10.0 {
+            startTouchesPublisher.send(Moves.left)
+          }
+          if value.translation.width < 10.0 {
+            startTouchesPublisher.send(Moves.right)
+            print("value ",abs(value.translation.width))
+          }
+          UIApplication.shared.endEditing()
+        }
+        .onEnded({ ( value ) in
+          //            stopTouchesPublisher.send()
+        })
+        ).onReceive(startTouchesPublisher) { ( direct ) in
           self.direction = direct
           self.isRunning = true
       }
@@ -80,7 +105,6 @@ struct ContentView: View {
             }
             self.boxKey[0] = tmp
           }
-          
         }
       }
       HStack {
@@ -89,40 +113,60 @@ struct ContentView: View {
             .font(Fonts.futuraCondensedMedium(size: fontSize))
             .frame(width: keysize, height: keysize, alignment: .center)
             .border(Color.gray)
-            .onTapGesture { self.name += self.boxKey[column] }
+            .onTapGesture {
+              if self.boxKey[column] == "<" {
+                if !self.name.isEmpty {
+                  self.name.removeLast()
+                } else {
+                  firstKey = true
+                }
+                return
+              }
+              if firstKey {
+                switch self.boxKey[column] {
+                case "j":
+                  self.name = "Je "
+                case "t":
+                  self.name = "Tu "
+                case "i":
+                  self.name = "Il "
+                case "e":
+                  self.name = "Elle "
+                case "n":
+                  self.name = "Nous "
+                case "v":
+                  self.name = "Vous "
+                default:
+                  break
+                  // do nothing
+                }
+                firstKey = false
+              } else {
+                self.name += self.boxKey[column]
+              }
+          }
         }
-      }
-      HStack {
-        Rectangle()
-          .fill(Color.yellow)
-          .gesture(DragGesture(minimumDistance: 0)
-            .updating($isTapped) { (_, isTapped, _) in
-              isTapped = true
-              startTouchesPublisher.send(Moves.left)
-          }
-          .onEnded({ ( value ) in
-            stopTouchesPublisher.send()
-          })
-        )
-          .frame(width: 128, height: 128, alignment: .center)
-        Rectangle()
-          .fill(Color.red)
-          .frame(width: 128, height: 128, alignment: .center)
-          .gesture(DragGesture(minimumDistance: 0)
-            .updating($isTapped) { (_, isTapped, _) in
-              isTapped = true
-              startTouchesPublisher.send(Moves.right)
-          }
-          .onEnded({ ( value ) in
-            stopTouchesPublisher.send()
-          })
-        )
-      }
-      TextField("Verb", text: $name)
-      .font(Fonts.futuraCondensedMedium(size: fontSize))
-      .labelsHidden()
-      .frame(width: 256, height: 32, alignment: .center)
+      
+}
+        
+       
+      
+//      TextField("Verb", text: $name, onCommit: {
+//        print("fooBar")
+//      })
+      Text(name)
+        .font(Fonts.futuraCondensedMedium(size: fontSize))
+        .labelsHidden()
+        .frame(width: 256, height: 32, alignment: .center)
+    }.onTapGesture {
+      UIApplication.shared.endEditing()
     }
+  }
+}
+
+extension UIApplication {
+  func endEditing() {
+    sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
   }
 }
 
@@ -133,3 +177,5 @@ struct ContentView_Previews: PreviewProvider {
     ContentView()
   }
 }
+
+
